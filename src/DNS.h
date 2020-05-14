@@ -1,5 +1,5 @@
 #pragma once
-#include <Windows.h>
+#include <WinSock2.h>
 #include <string>
 
 #pragma pack(push, 1)

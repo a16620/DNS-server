@@ -1,4 +1,7 @@
 #include "DNSDatabase.h"
+#include "Logger.h"
+
+extern std::unique_ptr<Logger> logger;
 
 using namespace std;
 void DNSDatabase::AddRecord(Head& dest, DNSA rec)
@@ -96,13 +99,13 @@ bool DNSDatabase::DNSQuery(const std::string& domain, ULONG** out, int* size) co
 		return true;
 	}
 	catch (std::bad_alloc e) {
-		//로그 남기기
+		logger->Log(e.what());
 		return false;
 	}
-	catch (...) {
+	catch (exception e) {
 		if (lst != nullptr)
 			delete[] lst;
-		//로그 남기기
+		logger->Log(e.what());
 		return false;
 	}
 }
@@ -128,7 +131,7 @@ bool DNSDatabase::DNSRemove(const std::string& domain, const ULONG* addresses, i
 	unique_lock<shared_mutex> lk(dnsTableLock, std::adopt_lock);
 	auto it = dnsTable.find(domain);
 	if (it == dnsTable.end())
-		return;
+		return false;
 	
 	Head& head = it->second;
 	for (int i = 0; i < size; ++i)

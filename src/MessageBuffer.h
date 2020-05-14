@@ -4,42 +4,52 @@
 #include <mutex>
 #include <atomic>
 #include <future>
+#include <vector>
 
 struct Message {
 	ULONG host;
 	USHORT hostPort;
+	USHORT length;
 	char* query;
+};
+
+class WorkerThread;
+
+class LoadBalancer {
+	std::vector<WorkerThread*> workers;
+public:
+	LoadBalancer(int workerCount);
+	~LoadBalancer();
+	bool Select(Message& msg);
+	void Stop();
 };
 
 class MessageBuffer
 {
 	std::queue<Message> msgQueue;
 	std::mutex queueLock;
+	LoadBalancer loadBalancer;
+	std::promise<void> tSignal;
+	std::thread _workingThread;
 public:
+	void _WorkingThread();
+	MessageBuffer();
+	~MessageBuffer();
 	void Store(Message & msg);
-};
-
-class WorkerThread;
-
-class LoadBalancer {
-	std::list<WorkerThread*> workers;
+	void Stop();
+	void Release();
 };
 
 class WorkerThread {
-	std::atomic_bool available;
-	std::condition_variable_any cv;
-	std::promise<void> tSignal;
+	std::atomic_bool available, running;
+	std::condition_variable cv;
+	std::mutex wLock;
 	Message currentWork;
+	std::thread _workingThread;
 public:
-	WorkerThread(std::future<void>&& signal);
+	void _WorkingThread();
+	WorkerThread();
 	inline bool isAvailable();
 	void GiveWork(Message msg);
-	void WorkingThread();
 	void Stop();
-};
-
-class FreeLock {
-public:
-	void lock() {}
-	void unlock() {}
 };

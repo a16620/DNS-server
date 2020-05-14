@@ -4,7 +4,6 @@
 #include "DNSDatabase.h"
 #include <thread>
 #include <future>
-#include <WinSock2.h>
 #pragma comment(lib, "ws2_32.lib")
 
 struct ServerConfig {
@@ -25,7 +24,7 @@ class UDPListener
 public:
 	UDPListener(ServerConfig config, MessageBuffer* buffer);
 	~UDPListener();
-	ServerConfig& Config();
+	ServerConfig Config();
 	void Stop();
 };
 
