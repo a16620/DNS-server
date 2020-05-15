@@ -64,7 +64,7 @@ bool Transcription::ParseTo(char* buffer, std::unordered_map<std::string, DMAP> 
 			*(USHORT*)begin = head;
 			begin[3] = 1;
 			begin[5] = 1;
-			*(ULONG*)(begin + 6) = htonl(240);
+			*(ULONG*)(begin + 6) = htonl(10);
 			begin[11] = 4;
 			*(ULONG*)(begin + 12) = name.second.arr[i];
 			begin += 16;
@@ -83,25 +83,18 @@ bool Transcription::ParseTo(char* buffer, std::unordered_map<std::string, DMAP> 
 
 char* Transcription::WriteName(char* buffer, const std::string& name)
 {
-	std::string tb = name;
-	int idx = 0;
+	std::string tb = " " + name;
+	int bc = 0;
 	const int len = tb.size();
-	bool isF = true;
-	int fs = 0;
 	for (int i = 0; i < len; ++i) {
-		if (tb[i] == '.')
-		{
-			if (isF) {
-				fs = i;
-				isF = false;
-			}
-			tb[i] = i-idx;
-			idx = i;
+		if (tb[i] == '.') {
+			tb[bc] = i - bc-1;
+			bc = i;
 		}
 	}
-	memcpy(buffer+1, tb.c_str(), len);
-	buffer[0] = fs;
-	buffer[len+1] = 0;
-	return buffer+len+2;
+	tb[bc] = len - bc-1;
+	memcpy(buffer, tb.c_str(), len);
+	buffer[len] = 0;
+	return buffer+len+1;
 }
 

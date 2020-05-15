@@ -10,8 +10,11 @@ std::unique_ptr<Logger> logger(new Logger("testlog.txt"));
 UDPSocket udpSender;
 
 int main() {
-	ULONG address[] = { htonl(0xAC1E0110), htonl(0xAC1E0104) };
-	db->DNSUpdate("a.a", address, 2);
+	ULONG address[] = { inet_addr("172.30.1.16") };
+	db->DNSUpdate("a.a", address, 1);
+	db->DNSUpdate("b.a", address, 1);
+	db->DNSUpdate("www.naver.com", address, 1);
+	db->DNSUpdate("naver.com", address, 1);
 	WSADATA wsa;
 	WSAStartup(MAKEWORD(2, 2), &wsa);
 	ServerConfig config;
@@ -28,5 +31,13 @@ int main() {
 		logger->Log(e.what());
 	}
 	WSACleanup();
+	return 0;
+}
+
+int main_()
+{
+	char a[20];
+	Transcription::WriteName(a, "www.goo.go");
+	printf("%s", a);
 	return 0;
 }
