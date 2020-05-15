@@ -1,9 +1,11 @@
 #include "MessageBuffer.h"
+#include "UDPListener.h"
 #include "DNSDatabase.h"
 #include "Logger.h"
 
 extern std::unique_ptr<DNSDatabase> db;
 extern std::unique_ptr<Logger> logger;
+extern UDPSocket udpSender;
 
 MessageBuffer::MessageBuffer() : loadBalancer(1)
 {
@@ -62,9 +64,17 @@ void MessageBuffer::_WorkingThread()
 	}
 }
 
-WorkerThread::WorkerThread() : available(true), running(true)
+WorkerThread::WorkerThread() : available(true), running(true), packetBuffer(nullptr, [](char* ptr) { delete[] ptr; })
 {
 	currentWork = Message();
+	try {
+
+		packetBuffer.reset(new char[WorkerBufferSize]);
+	}
+	catch (std::bad_alloc e) {
+		logger->Log("워커 패킷 버퍼 할당 실패");
+		throw std::runtime_error("워커 패킷 버퍼 할당 실패");
+	}
 	_workingThread = std::thread([] (WorkerThread* wt) { wt->_WorkingThread(); }, this);
 }
 
@@ -84,6 +94,10 @@ void WorkerThread::GiveWork(Message msg)
 
 void WorkerThread::_WorkingThread()
 {
+	DNSHEADER header;
+	sockaddr_in tad;
+	memset(&tad, 0, sizeof(tad));
+	tad.sin_family = AF_INET;
 	while (running) {
 		std::unique_lock<std::mutex> lk(wLock);
 		cv.wait(lk, [&] { return !available; });
@@ -92,20 +106,44 @@ void WorkerThread::_WorkingThread()
 			available = true;
 			continue;
 		}
-		currentWork.query[currentWork.length] = 0;
-		logger->Log(currentWork.query);
+		//currentWork.query[currentWork.length] = 0;
 
-		available = true;
-		printf("work end");
-		continue;
+		std::vector<std::string> domains;
+		if (Transcription::Interpret(currentWork.query, &domains, &header))
+		{
+			std::unordered_map<std::string, Transcription::DMAP> dmap;
+			for (auto& domain : domains)
+			{
+				int count;
+				ULONG* addresses;
+				if (db->DNSQuery(domain, &addresses, &count)) {
+					if (dmap.count(domain) == 0)
+						dmap.insert(std::make_pair(domain, Transcription::DMAP{ count, addresses }));
+					else
+						delete[] addresses;
+				}
+			}
+			int plen;
+			if (Transcription::ParseTo(packetBuffer.get(), dmap, header.id, &plen))
+			{
+				//전송
+				tad.sin_addr.s_addr = currentWork.host;
+				tad.sin_port = currentWork.hostPort;
+				if (udpSender.SendTo(packetBuffer.get(), plen, 0, (sockaddr*)&tad, sizeof(tad)) == -1)
+				{
+					char tnum[10];
+					itoa(WSAGetLastError(), tnum, 10);
+					logger->Log(tnum);
+				}
+			}
 
-		int count;
-		ULONG* addresses;
-		std::string domain;
-		if (db->DNSQuery(domain, &addresses, &count)) {
-
-			delete[] addresses;
+			for (auto dm : dmap)
+			{
+				delete[] dm.second.arr;
+			}
 		}
+
+		memset(packetBuffer.get(), 0, WorkerBufferSize);
 
 		delete[] currentWork.query;
 		currentWork.query = nullptr;

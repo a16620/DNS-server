@@ -59,27 +59,27 @@ void DNSDatabase::DeleteAll(Head& begin)
 
 bool DNSDatabase::AuthQuery(ULONG host) const
 {
-	shared_lock<shared_mutex> lk{ authTableLock };
+	shared_lock<shared_mutex> lk( authTableLock);
 	return authBlacklist.find(host) == authBlacklist.end();
 }
 
 bool DNSDatabase::AuthInsert(ULONG host)
 {
-	unique_lock<shared_mutex> lk(dnsTableLock, std::adopt_lock);
+	lock_guard<shared_mutex> lk(dnsTableLock);
 	authBlacklist.insert(host);
 	return true;
 }
 
 bool DNSDatabase::AuthRemove(ULONG host)
 {
-	unique_lock<shared_mutex> lk(dnsTableLock, std::adopt_lock);
+	lock_guard<shared_mutex> lk(dnsTableLock);
 	authBlacklist.erase(host);
 	return true;
 }
 
 bool DNSDatabase::DNSQuery(const std::string& domain, ULONG** out, int* size) const
 {
-	shared_lock<shared_mutex> lk{ dnsTableLock };
+	shared_lock<shared_mutex> lk(dnsTableLock);
 	const auto result = dnsTable.find(domain);
 	if (result == dnsTable.end())
 		return false;
@@ -112,7 +112,7 @@ bool DNSDatabase::DNSQuery(const std::string& domain, ULONG** out, int* size) co
 
 bool DNSDatabase::DNSUpdate(const string& domain, const ULONG* addresses, int size)
 {
-	unique_lock<shared_mutex> lk(dnsTableLock, std::adopt_lock);
+	lock_guard<shared_mutex> lk(dnsTableLock);
 	auto it = dnsTable.find(domain);
 	if (it == dnsTable.end())
 	{
@@ -122,13 +122,12 @@ bool DNSDatabase::DNSUpdate(const string& domain, const ULONG* addresses, int si
 	for (int i = 0; i < size; ++i) {
 		AddRecord(head, DNSA{addresses[i]});
 	}
-	lk.unlock();
 	return true;
 }
 
 bool DNSDatabase::DNSRemove(const std::string& domain, const ULONG* addresses, int size)
 {
-	unique_lock<shared_mutex> lk(dnsTableLock, std::adopt_lock);
+	lock_guard<shared_mutex> lk(dnsTableLock);
 	auto it = dnsTable.find(domain);
 	if (it == dnsTable.end())
 		return false;
@@ -138,7 +137,6 @@ bool DNSDatabase::DNSRemove(const std::string& domain, const ULONG* addresses, i
 		DeleteRecord(head, addresses[i]);
 	if (head.cnt == 0)
 		dnsTable.erase(it);
-	lk.unlock();
 	return true;
 }
 

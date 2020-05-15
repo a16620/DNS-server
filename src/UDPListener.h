@@ -28,3 +28,25 @@ public:
 	void Stop();
 };
 
+class UDPSocket {
+	std::mutex lock;
+public:
+	SOCKET s;
+	UDPSocket()
+	{
+		s = INVALID_SOCKET;
+	}
+	UDPSocket(SOCKET _s)
+	{
+		s = _s;
+	}
+	~UDPSocket()
+	{
+		//closesocket(s);
+	}
+	inline int SendTo(const char FAR* buf, int len, int flags, const struct sockaddr FAR* to, int tolen)
+	{
+		std::lock_guard<std::mutex> lk(lock);
+		return sendto(s, buf, len, flags, to, tolen);
+	}
+};

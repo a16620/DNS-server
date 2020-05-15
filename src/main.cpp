@@ -7,8 +7,11 @@
 
 std::unique_ptr<DNSDatabase> db(new DNSDatabase);
 std::unique_ptr<Logger> logger(new Logger("testlog.txt"));
+UDPSocket udpSender;
 
 int main() {
+	ULONG address[] = { htonl(0xAC1E0110), htonl(0xAC1E0104) };
+	db->DNSUpdate("a.a", address, 2);
 	WSADATA wsa;
 	WSAStartup(MAKEWORD(2, 2), &wsa);
 	ServerConfig config;
@@ -25,6 +28,5 @@ int main() {
 		logger->Log(e.what());
 	}
 	WSACleanup();
-	logger->WriteLog();
-	logger->WriteLog();
+	return 0;
 }

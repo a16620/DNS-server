@@ -4,6 +4,7 @@
 
 extern std::unique_ptr<DNSDatabase> db;
 extern std::unique_ptr<Logger> logger;
+extern UDPSocket udpSender;
 
 UDPListener::UDPListener(ServerConfig config, MessageBuffer* buffer)
 {
@@ -28,6 +29,8 @@ UDPListener::UDPListener(ServerConfig config, MessageBuffer* buffer)
 		closesocket(listener);
 		throw std::runtime_error("소켓 바인딩 실패");
 	}
+
+	udpSender.s = listener;
 
 	std::promise<bool> initP;
 	auto inited = initP.get_future();
@@ -60,8 +63,9 @@ UDPListener::UDPListener(ServerConfig config, MessageBuffer* buffer)
 			msg.hostPort = host.sin_port;
 			msg.length = rBytes;
 			try {
-				char* cpy = new char[rBytes];
+				char* cpy = new char[rBytes+1];
 				memcpy(cpy, msgBuffer.get(), rBytes);
+				cpy[rBytes] = 0;
 				msg.query = cpy;
 				output->Store(msg);
 			}

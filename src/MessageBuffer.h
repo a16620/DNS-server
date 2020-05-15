@@ -1,10 +1,12 @@
 #pragma once
 #include "DNS.h"
-#include <queue>
 #include <mutex>
 #include <atomic>
 #include <future>
 #include <vector>
+#include <queue>
+
+constexpr int WorkerBufferSize = 1500;
 
 struct Message {
 	ULONG host;
@@ -46,6 +48,7 @@ class WorkerThread {
 	std::mutex wLock;
 	Message currentWork;
 	std::thread _workingThread;
+	std::unique_ptr<char, std::function<void(char*)>> packetBuffer;
 public:
 	void _WorkingThread();
 	WorkerThread();

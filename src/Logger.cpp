@@ -7,8 +7,20 @@ Logger::Logger(const std::string& logfile)
 
 Logger::~Logger()
 {
+
 	if (file != NULL)
+	{
+		while (!logs.empty())
+		{
+			LogInfo info;
+			if (logs.try_pop(info)) {
+				char tbuf[30];
+				strftime(tbuf, 30, "%y %m %d %H:%M:%S", localtime(&info.time));
+				fprintf(file, "%s %s\n", tbuf, info.log.c_str());
+			}
+		}
 		fclose(file);
+	}
 }
 
 void Logger::Log(const std::string& log)
