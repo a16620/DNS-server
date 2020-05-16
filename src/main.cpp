@@ -33,11 +33,3 @@ int main() {
 	WSACleanup();
 	return 0;
 }
-
-int main_()
-{
-	char a[20];
-	Transcription::WriteName(a, "www.goo.go");
-	printf("%s", a);
-	return 0;
-}
